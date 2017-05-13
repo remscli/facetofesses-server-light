@@ -5,15 +5,22 @@
 
 #define PIN 6
 
+#define MIN_PROGRESS 0 // At the begining
+#define MAX_PROGRESS 100 // At the end
 
-const float MIN_COLOR = 120.0;
-const float MAX_COLOR = 255.0;
+#define MIN_COLOR 120 // At the begining
+#define MAX_COLOR 255 // At the end
 
-const float MIN_VALUE = 0.0;
-const float MAX_VALUE = 100.0;
+#define MIN_BRIGHTNESS 30 // At the begining
+#define MAX_BRIGHTNESS 255 // At the end
+
+#define MIN_BREATHING_DURATION 2000 // At the end - In milliseconds
+#define MAX_BREATHING_DURATION 6000 // At the begining - milliIn seconds
+
+int brightness = MIN_BRIGHTNESS;
 
 int byte_read = 0;
-int recieved_integer = 0;
+int progress = 0;
 
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = Arduino pin number (most are valid)
@@ -26,25 +33,31 @@ int recieved_integer = 0;
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(120, PIN, NEO_GRB + NEO_KHZ800);
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   strip.begin();
+  strip.setBrightness(100);
   strip.show(); // Initialize all pixels to 'off'
 }
 
 void loop() {
-  //theaterChase(strip.Color(40, 0, 0), strip.Color(120, 0, 120), 60);
-
   if (Serial.available()) {
-    recieved_integer = 0;
+    int p = 0;
     while (Serial.available()) {
       byte_read = Serial.read();
       if ( is_a_number(byte_read) ) {
-        recieved_integer = ascii2int(recieved_integer, byte_read);
+        p = ascii2int(p, byte_read);
       }
-    } 
+      
+      // Wait 10ms to be sure to not miss the third character
+      delay(10);
+    }
+    
+    // Prevent unwanted values
+    if (p > MIN_PROGRESS && p <= MAX_PROGRESS) progress = p;
   }
 
-  theaterChase(scaleValueToColorRange(recieved_integer), 50);  
+  brightnessModuler(progress);
+  theaterChase(scaleValue(progress, MIN_PROGRESS, MAX_PROGRESS, MIN_COLOR, MAX_COLOR), 40);  
 }
 
 boolean is_a_number(int n)
@@ -57,16 +70,18 @@ int ascii2int(int n, int byte_read)
   return n*10 + (byte_read - 48);
 }
 
-int scaleValueToColorRange(int value) {
-  return (int) MIN_COLOR + (value - MIN_VALUE) / (MAX_VALUE - MIN_VALUE) * (MAX_COLOR - MIN_COLOR);
+int scaleValue(int value, float min1, float max1, float min2, float max2) {
+  return (int) min2 + (value - min1) / (max1 - min1) * (max2 - min2);
 }
 
 //Theatre-style crawling lights with provided color from 0 to 255
 void theaterChase(int color, uint8_t wait) {
-  for (int q=0; q < 3; q++) {       // move pixels per 3
+  for (int q=0; q < 3; q++) { // 1 pixel on for 3 offs
     for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
-      strip.setPixelColor(i+q, Wheel( (color) % 255));    //turn every third pixel on
+      // Turn every third pixel on
+      strip.setPixelColor(i+q, Wheel( (color) % 255));
     }
+
     strip.show();
 
     delay(wait);
@@ -75,6 +90,19 @@ void theaterChase(int color, uint8_t wait) {
       strip.setPixelColor(i+q, 0);        //turn every third pixel off
     }
   }
+}
+
+void brightnessModuler(int progress) {
+  int currentBreathingDuration = scaleValue(progress, MIN_PROGRESS, MAX_PROGRESS, MAX_BREATHING_DURATION, MIN_BREATHING_DURATION);
+  int t = millis() % (int) currentBreathingDuration;
+
+  // Reverse if higher than half of the current breathing duration
+  if (t > currentBreathingDuration / 2){
+     t = currentBreathingDuration - t;
+  }
+  
+  int currentBrightness = scaleValue(t, 0.0, currentBreathingDuration, MIN_BRIGHTNESS, MAX_BRIGHTNESS);
+  strip.setBrightness(currentBrightness);
 }
 
 // Input a value 0 to 255 to get a color value.
@@ -91,3 +119,4 @@ uint32_t Wheel(byte WheelPos) {
   WheelPos -= 170;
   return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
+
