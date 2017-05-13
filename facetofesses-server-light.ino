@@ -44,7 +44,7 @@ void loop() {
     } 
   }
 
-  theaterChaseRainbow(scaleValueToColorRange(recieved_integer), 50);  
+  theaterChase(scaleValueToColorRange(recieved_integer), 50);  
 }
 
 boolean is_a_number(int n)
@@ -61,27 +61,8 @@ int scaleValueToColorRange(int value) {
   return (int) MIN_COLOR + (value - MIN_VALUE) / (MAX_VALUE - MIN_VALUE) * (MAX_COLOR - MIN_COLOR);
 }
 
-//Theatre-style crawling lights.
-void theaterChase(uint32_t c1, uint32_t c2, uint8_t wait) {
-  for (int j=0; j<10; j++) {  //do 10 cycles of chasing
-    for (int q=0; q < 2; q++) {
-      for (uint16_t i=0; i < strip.numPixels(); i=i+2) {
-        strip.setPixelColor(i+q, c1);    //turn every third pixel on
-      }
-      
-      strip.show();
-
-      delay(wait);
-
-      for (uint16_t i=0; i < strip.numPixels(); i=i+2) {
-        strip.setPixelColor(i+q, 0);        //turn every third pixel off
-      }
-    }
-  }
-}
-
-//Theatre-style crawling lights with rainbow effect
-void theaterChaseRainbow(int color, uint8_t wait) {
+//Theatre-style crawling lights with provided color from 0 to 255
+void theaterChase(int color, uint8_t wait) {
   for (int q=0; q < 3; q++) {       // move pixels per 3
     for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
       strip.setPixelColor(i+q, Wheel( (color) % 255));    //turn every third pixel on
