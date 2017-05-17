@@ -20,7 +20,9 @@
 int brightness = MIN_BRIGHTNESS;
 
 int byte_read = 0;
-int progress = 0;
+int progress[2] = {0, 0};
+boolean nextCharIsPin = false;
+boolean nextIsProgress = false;
 
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = Arduino pin number (most are valid)
@@ -45,12 +47,34 @@ void setup() {
 }
 
 void loop() {
+  int n = 0;
+  int pin = 0;
+  
   if (Serial.available()) {
-    int p = 0;
     while (Serial.available()) {
       byte_read = Serial.read();
-      if ( is_a_number(byte_read) ) {
-        p = ascii2int(p, byte_read);
+      
+      if ( is_a_number(byte_read) && !nextCharIsPin ) {
+        n = ascii2int(n, byte_read);
+      } else {
+
+        if (nextCharIsPin) {
+          pin = byte_read - 48;
+        }
+  
+        if ( is_value_delimiter(byte_read) ) {
+          nextIsProgress = true;
+        } else {
+          nextIsProgress = false;
+        }
+        
+        if ( is_pin_delimiter(byte_read) ) {
+          n = 0;
+          nextCharIsPin = true;
+          nextIsProgress = false;
+        } else {
+          nextCharIsPin = false;
+        }
       }
       
       // Wait 10ms to be sure to not miss the third character
@@ -58,18 +82,29 @@ void loop() {
     }
     
     // Prevent unwanted values
-    if (p >= MIN_PROGRESS && p <= MAX_PROGRESS) progress = p;
+    if (n >= MIN_PROGRESS && n <= MAX_PROGRESS) progress[pin] = n;
   }
   
-  if (progress > 0) {
-    brightnessModuler(progress);
-    theaterChase(scaleValue(progress, MIN_PROGRESS, MAX_PROGRESS, MIN_COLOR, MAX_COLOR), 40);   
+  Serial.println("Pin : " + String(pin));
+  Serial.println("Progress : " + String(progress[pin]));
+    
+  if (progress[pin] > 0) {
+    brightnessModuler(progress[pin]);
+    theaterChase(scaleValue(progress[pin], MIN_PROGRESS, MAX_PROGRESS, MIN_COLOR, MAX_COLOR), 40);   
   }
 }
 
 boolean is_a_number(int n)
 {
   return n >= 48 && n <= 57;
+}
+
+boolean is_pin_delimiter(int n) {
+  return n == 35;
+}
+
+boolean is_value_delimiter(int n) {
+  return n == 58;
 }
 
 int ascii2int(int n, int byte_read)
