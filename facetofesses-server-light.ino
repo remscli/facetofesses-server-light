@@ -21,6 +21,7 @@ int brightness = MIN_BRIGHTNESS;
 
 int byte_read = 0;
 int progress = 0;
+bool chasing = false;
 
 // Parameter 1 = number of pixels in strip
 // Parameter 2 = Arduino pin number (most are valid)
@@ -36,34 +37,37 @@ void setup() {
   Serial.begin(115200);
   strip.begin();
   strip.setBrightness(100);
-  
-  for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
-    strip.setPixelColor(i, Wheel( (MIN_COLOR) % 255));
-  }
-  
   strip.show();
 }
 
 void loop() {
   if (Serial.available()) {
+  
     int p = 0;
     while (Serial.available()) {
       byte_read = Serial.read();
       if ( is_a_number(byte_read) ) {
         p = ascii2int(p, byte_read);
       }
+
+      updateChasing(byte_read);
       
       // Wait 10ms to be sure to not miss the third character
       delay(10);
     }
-    
+        
     // Prevent unwanted values
     if (p >= MIN_PROGRESS && p <= MAX_PROGRESS) progress = p;
   }
   
-  if (progress > 0) {
+  if (chasing) {
     brightnessModuler(progress);
-    theaterChase(scaleValue(progress, MIN_PROGRESS, MAX_PROGRESS, MIN_COLOR, MAX_COLOR), 40);   
+    theaterChase(scaleValue(progress, MIN_PROGRESS, MAX_PROGRESS, MIN_COLOR, MAX_COLOR), 40); 
+  } else {
+    for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
+      strip.setPixelColor(i, Wheel( (MIN_COLOR) % 255));
+    }
+    strip.show();
   }
 }
 
@@ -75,6 +79,14 @@ boolean is_a_number(int n)
 int ascii2int(int n, int byte_read)
 {
   return n*10 + (byte_read - 48);
+}
+
+int updateChasing(int byte_read) {
+  if (byte_read == 93) {
+    chasing = false;
+  } else if (byte_read == 91) {
+    chasing = true;
+  }
 }
 
 int scaleValue(int value, float min1, float max1, float min2, float max2) {
