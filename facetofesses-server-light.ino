@@ -36,7 +36,12 @@ void setup() {
   Serial.begin(115200);
   strip.begin();
   strip.setBrightness(100);
-  strip.show(); // Initialize all pixels to 'off'
+  
+  for (uint16_t i=0; i < strip.numPixels(); i=i+3) {
+    strip.setPixelColor(i, Wheel( (MIN_COLOR) % 255));
+  }
+  
+  strip.show();
 }
 
 void loop() {
@@ -53,11 +58,13 @@ void loop() {
     }
     
     // Prevent unwanted values
-    if (p > MIN_PROGRESS && p <= MAX_PROGRESS) progress = p;
+    if (p >= MIN_PROGRESS && p <= MAX_PROGRESS) progress = p;
   }
-
-  brightnessModuler(progress);
-  theaterChase(scaleValue(progress, MIN_PROGRESS, MAX_PROGRESS, MIN_COLOR, MAX_COLOR), 40);  
+  
+  if (progress > 0) {
+    brightnessModuler(progress);
+    theaterChase(scaleValue(progress, MIN_PROGRESS, MAX_PROGRESS, MIN_COLOR, MAX_COLOR), 40);   
+  }
 }
 
 boolean is_a_number(int n)
